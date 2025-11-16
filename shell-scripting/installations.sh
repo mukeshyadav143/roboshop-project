@@ -9,7 +9,9 @@ else
 fi
 
 dnf install mysql -y
+
 if [ $? -eq 0 ]; then
     echo "mysql isntallation is success"
-else "mysql installation is failure because of "0" code"
+else 
+    echo "mysql installation is failure because of "0" code"
 fi

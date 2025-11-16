@@ -2,7 +2,7 @@
 
 user_id=$(id -u)
 
-if [ $user_id -ne 0 ]; then 
+if [ $user_id -eq 0 ]; then 
     echo "proceeding installations wih root access"
 else 
     echo "please proceed wih root access"

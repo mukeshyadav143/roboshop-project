@@ -3,8 +3,6 @@
 echo "script name: $0"
 #$1, $2…: Positional arguments --->  echo "1st argument: $1"
 echo "all arguments individually: $@"
-echo "all arguments as one string: $*"
-echo "number of arguments: $#"
 echo "current directory: $PWD"
 echo "who is running this: $USER"
 echo "who is running this: $USER"

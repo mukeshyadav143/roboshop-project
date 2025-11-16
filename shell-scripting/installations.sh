@@ -9,9 +9,9 @@ else
 exit 1
 fi
 
-dnf install mysql -y
+dnf install nginx -y
 
-if [ $? -eq 0 ]; then
+if [ $? -ne 0 ]; then
     echo "mysql isntallation is success"
 else 
     echo "mysql installation is failure"

@@ -4,20 +4,21 @@ user_id=$(id -u)
 R="\e[31m"
 G="\e[32m"
 Y="\e[33m"
-E="\e[0m"
+N="\e[0m"
 
 if [ $user_id -eq 0 ]; then 
-    echo -e "$R proceeding installations wih root access $E"
+    echo -e "${G} proceeding installations wih root access ${N}"
 else 
-    echo "please proceed wih root access"
+    echo "please proceed wih ${R} root access ${N}"
     exit 1
 fi
 
-dnf remove nginx -y
+dnf install mysql -y
 
-if [ $? -ne 0 ]; then
-    echo "mysql isntallation is success"
+if [ $? -eq 0 ]; then
+    echo "mysql isntallation ${G} is success ${N}"
 else 
-    echo "mysql installation is failure"
+    echo "mysql installation is ${R} failure ${N}"
     exit 1
 fi
+

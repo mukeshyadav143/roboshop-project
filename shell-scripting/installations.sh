@@ -3,22 +3,21 @@ USERID=$(id -u)
 R="\e[31m"
 G="\e[32m"
 Y="\e[33m"
-N="\e[0m"
 E="\e[0m"
 
 if [ $USERID -ne 0 ]; then
-    echo "ERROR:: Please run this script with ${R} root privelege ${N}"
+    echo -e "ERROR:: Please run this script with ${R} root privelege ${E}"
     exit 1 # failure is other than 0
 else 
-    echo "Running with root previlege sudo access"
+    echo -e "${G} Running with root previlege sudo access ${E}"
 fi
 
 dnf install mysql -y
 
 if [ $? -ne 0 ]; then
-    echo "ERROR:: Installing MySQL is failure"
+    echo -e "ERROR:: ${R} Installing MySQL is failure ${E}"
     exit 1
 else
-    echo "Installing MySQL is SUCCESS"
+    echo -e "${G}Installing MySQL is SUCCESS ${E}"
 fi
 

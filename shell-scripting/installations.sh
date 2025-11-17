@@ -1,24 +1,19 @@
-#checking the root access
 
-user_id=$(id -u)
-R="\e[31m"
-G="\e[32m"
-Y="\e[33m"
-E="\e[0m"
+USERID=$(id -u)
 
-if [ $user_id -eq 0 ]; then 
-    echo -e "${G} proceeding installations wih root access ${E}"
+if [ $USERID -ne 0 ]; then
+    echo "ERROR:: Please run this script with root privelege"
+    exit 1 # failure is other than 0
 else 
-    echo -e "please proceed with ${R} root access ${E}"
-    exit 1
+    echo "Running with root previlege sudo access"
 fi
 
 dnf install mysql -y
 
-if [ $? -eq 0 ]; then
-    echo -e "mysql isntallation ${G} is success ${E}"
-else 
-    echo -e "mysql installation is ${R} failure ${E}"
+if [ $? -ne 0 ]; then
+    echo "ERROR:: Installing MySQL is failure"
     exit 1
+else
+    echo "Installing MySQL is SUCCESS"
 fi
 

@@ -6,7 +6,7 @@ Y="\e[33m"
 E="\e[0m"
 
 if [ $USERID -ne 0 ]; then
-    echo -e "ERROR:: Please run this script with ${R} root privelege ${E}"
+    echo -e "ERROR:: ${R} Please run this script with  root privelege ${E}"
     exit 1 # failure is other than 0
 else 
     echo -e "${G} Running with root previlege sudo access ${E}"

@@ -12,12 +12,21 @@ else
     echo -e "${G} Running with root previlege sudo access ${E}"
 fi
 
-dnf install mysql -y
+validate() {    # here this function can take the args like in the shell script  
+    if [ $1 -ne 0 ]; then
+        echo -e "ERROR:: ${R} Installing $2 is failure ${E}"
+        exit 1
+    else
+        echo -e "${G}Installing $2 is SUCCESS ${E}"
+    fi
+}
 
-if [ $? -ne 0 ]; then
-    echo -e "ERROR:: ${R} Installing MySQL is failure ${E}"
-    exit 1
-else
-    echo -e "${G}Installing MySQL is SUCCESS ${E}"
-fi
+dnf install mysql -y
+validate $? "mysql"
+
+dnf install nginx -y
+validate $? "nginx"
+
+dnf install python3 -y
+validate $? "python3"
 

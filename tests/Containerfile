@@ -1,0 +1,5 @@
+# Rocky Linux 9 with systemd as PID 1, standing in for a server in the end-to-end test.
+FROM rockylinux:9
+RUN dnf install -y systemd shadow-utils procps-ng && dnf clean all
+STOPSIGNAL SIGRTMIN+3
+CMD ["/usr/sbin/init"]

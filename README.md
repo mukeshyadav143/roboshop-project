@@ -1,9 +1,40 @@
 # roboshop-project
 
 [![CI](https://github.com/mukeshyadav143/roboshop-project/actions/workflows/ci.yml/badge.svg)](https://github.com/mukeshyadav143/roboshop-project/actions/workflows/ci.yml)
+[![E2E](https://github.com/mukeshyadav143/roboshop-project/actions/workflows/e2e.yml/badge.svg)](https://github.com/mukeshyadav143/roboshop-project/actions/workflows/e2e.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Bash scripts that deploy RoboShop, a sample microservices e-commerce app, on RHEL-family Linux (RHEL, Rocky, Alma, CentOS Stream, Fedora).
+
+```mermaid
+flowchart LR
+    B([Browser]) --> F[frontend<br/>nginx :80]
+    F --> C[catalogue :8080]
+    F --> U[user :8080]
+    F --> CA[cart :8080]
+    F --> S[shipping :8080]
+    F --> P[payment :8080]
+    C --> M[(MongoDB)]
+    U --> M
+    U --> R[(Redis)]
+    CA --> R
+    CA --> C
+    S --> MY[(MySQL)]
+    S --> CA
+    P --> CA
+    P --> U
+    P --> Q[(RabbitMQ)]
+    Q --> D[dispatch]
+```
+
+## Try the whole shop locally
+
+With Docker installed, one command deploys all 11 tiers into Rocky Linux 9 containers using the scripts in this repo, then checks the shop works:
+
+```bash
+bash tests/e2e.sh          # deploy, test, clean up
+KEEP=1 bash tests/e2e.sh   # same, but leave the containers running
+```
 
 ## install.sh
 
@@ -112,11 +143,19 @@ Open the ports in the table between servers (security groups or `firewalld`). Th
 
 ## Tests
 
-CI runs on every push:
+Two workflows run on every push:
+
+**E2E** runs `tests/e2e.sh`: every service script deploys its tier into its own systemd container, then the test checks through the frontend that all five APIs answer, catalogue serves products from MongoDB, shipping serves cities from MySQL, user gets ids from Redis, and dispatch is running.
+
+**CI** runs:
 
 - [ShellCheck](https://www.shellcheck.net/) on every script
 - `install.sh` in a Rocky Linux 9 container: dry run changes nothing, a real install works, a second run skips the package, and an unknown package fails
-- every script in `services/`, twice each, in Rocky Linux 9 containers with `SKIP_SERVICE_START=1`: packages install, Node.js dependencies install, shipping builds with Maven, dispatch builds with Go, nginx config passes `nginx -t`. Starting services and loading data need systemd, so test those on a real server
+- every script in `services/`, twice each, in Rocky Linux 9 containers with `SKIP_SERVICE_START=1`: packages install, Node.js dependencies install, shipping builds with Maven, dispatch builds with Go, nginx config passes `nginx -t`. the E2E workflow covers starting them
+
+## Contributing
+
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Credits
 

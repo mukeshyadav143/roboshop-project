@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: ShellCheck
-        run: shellcheck -x install.sh lib/common.sh shell-scripting/*.sh
+        run: shellcheck -x -P SCRIPTDIR/.. install.sh lib/*.sh services/*.sh shell-scripting/*.sh
 
   install-test:
     runs-on: ubuntu-latest
@@ -31,3 +31,42 @@ jobs:
         run: bash install.sh nginx | grep -q "SKIP:.*nginx is already installed"
       - name: Fails on unknown package
         run: "! bash install.sh no-such-package-xyz"
+
+  services:
+    runs-on: ubuntu-latest
+    container: rockylinux:9
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [mongodb, redis, mysql, rabbitmq, catalogue, user, cart, shipping, payment, dispatch, frontend]
+    env:
+      SKIP_SERVICE_START: "1"   # no systemd in the container: install and build only
+      MYSQL_ROOT_PASSWORD: ci-only-password
+      RABBITMQ_USER: roboshop
+      RABBITMQ_PASS: ci-only-password
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install systemd files and useradd
+        run: dnf install -y systemd shadow-utils
+      - name: Run services/${{ matrix.service }}.sh
+        run: bash services/${{ matrix.service }}.sh
+      - name: Run it again (must be safe to repeat)
+        run: bash services/${{ matrix.service }}.sh
+      - name: Check the result
+        run: |
+          case "${{ matrix.service }}" in
+            mongodb)  rpm -q mongodb-org && grep -q 'bindIp: 0.0.0.0' /etc/mongod.conf ;;
+            redis)    rpm -q redis && grep -q '^bind 0.0.0.0' /etc/redis/redis.conf ;;
+            mysql)    rpm -q mysql-server ;;
+            rabbitmq) rpm -q rabbitmq-server ;;
+            catalogue|user|cart)
+                      test -d /app/node_modules/express && test -f /etc/systemd/system/${{ matrix.service }}.service ;;
+            shipping) test -f /app/shipping.jar && test -f /etc/systemd/system/shipping.service ;;
+            payment)  test -x /usr/local/bin/uwsgi && grep -q '^uid = roboshop' /app/payment.ini ;;
+            dispatch) test -x /app/dispatch ;;
+            frontend) test -f /usr/share/nginx/html/index.html && nginx -t ;;
+          esac
+          for f in /etc/roboshop/*.env; do
+            [ -e "$f" ] || continue
+            test "$(stat -c %a "$f")" = 600   # secrets file readable by root only
+          done

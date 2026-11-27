@@ -9,6 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Deploy every tier and test the shop
         run: bash tests/e2e.sh

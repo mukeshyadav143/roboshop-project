@@ -42,6 +42,26 @@ validate() {
     log "${G}OK:${N} $2"
 }
 
+# run <description> <command...>: run quietly, output to the log, stop on failure
+run() {
+    local desc="$1"
+    shift
+    "$@" >>"$LOG_FILE" 2>&1
+    validate $? "$desc"
+}
+
+# install_pkgs <package...>: dnf install, skipping packages already present
+install_pkgs() {
+    local pkg
+    for pkg in "$@"; do
+        if is_installed "$pkg"; then
+            log "${Y}SKIP:${N} $pkg is already installed"
+        else
+            run "installing $pkg" dnf install -y "$pkg"
+        fi
+    done
+}
+
 is_installed() {
     rpm -q "$1" >/dev/null 2>&1
 }

@@ -1,23 +1,67 @@
 # roboshop-project
 
-Shell scripting practice for deploying RoboShop, a sample microservices e-commerce app, on RHEL-family Linux (dnf). This is a personal DevOps learning repo.
+[![CI](https://github.com/mukeshyadav143/roboshop-project/actions/workflows/ci.yml/badge.svg)](https://github.com/mukeshyadav143/roboshop-project/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## Scripts
+Bash scripts for setting up servers for RoboShop, a sample microservices e-commerce app, on RHEL-family Linux (RHEL, Rocky, Alma, CentOS Stream, Fedora).
 
-| File | What it does |
+## install.sh
+
+Installs packages with `dnf`, safely enough to run again and again:
+
+- skips packages that are already installed
+- logs every step to `/var/log/roboshop/install.log`
+- stops at the first failure and points you to the log
+- `-n` dry run shows what would change without touching the system
+
+```bash
+git clone https://github.com/mukeshyadav143/roboshop-project.git
+cd roboshop-project
+
+bash install.sh -n nginx          # dry run
+sudo bash install.sh nginx redis  # install specific packages
+sudo bash install.sh              # default set: mysql nginx python3
+```
+
+Example output:
+
+```text
+2026-11-27 10:00:01 Installing: nginx redis
+2026-11-27 10:00:01 SKIP: nginx is already installed
+2026-11-27 10:00:19 OK: installing redis
+2026-11-27 10:00:19 Done.
+```
+
+Set `LOG_DIR` to log somewhere else: `sudo LOG_DIR=/tmp/roboshop bash install.sh`.
+
+## Reuse the helpers
+
+`lib/common.sh` holds the shared functions. Source it in your own scripts:
+
+| Function | What it does |
 |---|---|
-| `shell-scripting/installations.sh` | Checks for root, then installs mysql, nginx and python3 with dnf and reports success or failure for each |
-| `shell-scripting/variables.sh` | Variables and string interpolation |
-| `shell-scripting/data-types.sh` | Bash arrays and indexing |
-| `shell-scripting/conditons.sh` | if/elif comparisons and an even/odd check on user input |
-| `shell-scripting/special-variables.sh` | Special variables: `$0`, `$@`, `$$`, `$!`, `$?`, `$-` |
+| `require_root` | Exits unless running as root |
+| `init_log` | Creates the log folder and file |
+| `log "msg"` | Prints a timestamped line and appends it to the log |
+| `validate $? "step"` | Logs OK, or logs the error and exits |
+| `is_installed pkg` | True if the RPM package is installed |
+| `die "msg"` | Logs an error and exits |
 
-## Run
+## Shell scripting examples
 
-`sudo bash shell-scripting/installations.sh`
+`shell-scripting/` holds short examples I wrote while learning Bash: variables, arrays, conditions, special variables (`$0`, `$@`, `$$`, `$?`) and the first version of the installer.
 
-The install script must run as root. It stops at the first package that fails to install.
+## Tests
 
-## Status
+CI runs on every push:
 
-Work in progress. The next step is install scripts for each RoboShop service.
+- [ShellCheck](https://www.shellcheck.net/) on every script
+- `install.sh` in a Rocky Linux 9 container: dry run changes nothing, a real install works, a second run skips the package, and an unknown package fails
+
+## Roadmap
+
+- Per-service setup scripts for the RoboShop components (MongoDB, Redis, MySQL, RabbitMQ, catalogue, user, cart, shipping, payment, frontend)
+
+## License
+
+[MIT](LICENSE)

@@ -1,3 +1,4 @@
+#!/bin/bash
 person1=DEVOPS
 person2=MLOPS
 

@@ -3,7 +3,7 @@
 [![CI](https://github.com/mukeshyadav143/roboshop-project/actions/workflows/ci.yml/badge.svg)](https://github.com/mukeshyadav143/roboshop-project/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Bash scripts for setting up servers for RoboShop, a sample microservices e-commerce app, on RHEL-family Linux (RHEL, Rocky, Alma, CentOS Stream, Fedora).
+Bash scripts that deploy RoboShop, a sample microservices e-commerce app, on RHEL-family Linux (RHEL, Rocky, Alma, CentOS Stream, Fedora).
 
 ## install.sh
 
@@ -34,6 +34,61 @@ Example output:
 
 Set `LOG_DIR` to log somewhere else: `sudo LOG_DIR=/tmp/roboshop bash install.sh`.
 
+## Deploy RoboShop, one script per server
+
+`services/` sets up every tier of RoboShop on RHEL 9-family servers (Rocky, Alma, RHEL). Each script installs what the tier needs, writes a systemd unit, starts it, and is safe to run again.
+
+| Script | Tier | Port | Needs |
+|---|---|---|---|
+| `mongodb.sh` | MongoDB 7.0 | 27017 | |
+| `redis.sh` | Redis 7 | 6379 | |
+| `mysql.sh` | MySQL 8 | 3306 | `MYSQL_ROOT_PASSWORD` |
+| `rabbitmq.sh` | RabbitMQ | 5672 | `RABBITMQ_USER`, `RABBITMQ_PASS` |
+| `catalogue.sh` | Node.js 20 API, loads product data once | 8080 | MongoDB |
+| `user.sh` | Node.js 20 API | 8080 | MongoDB, Redis |
+| `cart.sh` | Node.js 20 API | 8080 | Redis, catalogue |
+| `shipping.sh` | Java (Spring Boot, built with Maven), loads city data once | 8080 | MySQL, cart, `MYSQL_ROOT_PASSWORD` |
+| `payment.sh` | Python (uWSGI) | 8080 | cart, user, RabbitMQ, `RABBITMQ_USER`, `RABBITMQ_PASS` |
+| `dispatch.sh` | Go worker | | RabbitMQ, `RABBITMQ_USER`, `RABBITMQ_PASS` |
+| `frontend.sh` | Nginx: web UI and `/api/*` proxy | 80 | all APIs |
+
+Run them in this order, each on its own server, and tell each script where the others are:
+
+```bash
+sudo bash services/mongodb.sh
+sudo bash services/redis.sh
+sudo MYSQL_ROOT_PASSWORD='choose-one' bash services/mysql.sh
+sudo RABBITMQ_USER=roboshop RABBITMQ_PASS='choose-one' bash services/rabbitmq.sh
+
+sudo MONGODB_HOST=10.0.0.11 bash services/catalogue.sh
+sudo MONGODB_HOST=10.0.0.11 REDIS_HOST=10.0.0.12 bash services/user.sh
+sudo REDIS_HOST=10.0.0.12 CATALOGUE_HOST=10.0.0.21 bash services/cart.sh
+sudo MYSQL_HOST=10.0.0.13 CART_HOST=10.0.0.23 MYSQL_ROOT_PASSWORD='choose-one' bash services/shipping.sh
+sudo CART_HOST=10.0.0.23 USER_HOST=10.0.0.22 RABBITMQ_HOST=10.0.0.14 \
+     RABBITMQ_USER=roboshop RABBITMQ_PASS='choose-one' bash services/payment.sh
+sudo RABBITMQ_HOST=10.0.0.14 RABBITMQ_USER=roboshop RABBITMQ_PASS='choose-one' bash services/dispatch.sh
+sudo CATALOGUE_HOST=10.0.0.21 USER_HOST=10.0.0.22 CART_HOST=10.0.0.23 \
+     SHIPPING_HOST=10.0.0.24 PAYMENT_HOST=10.0.0.25 bash services/frontend.sh
+```
+
+Unset host variables default to the plain names (`mongodb`, `redis`, `catalogue`, …), so with DNS records or `/etc/hosts` entries for those names you can drop them.
+
+| Variable | Default | Used by |
+|---|---|---|
+| `MONGODB_HOST`, `REDIS_HOST`, `MYSQL_HOST`, `RABBITMQ_HOST` | `mongodb`, `redis`, `mysql`, `rabbitmq` | the services that use them |
+| `CATALOGUE_HOST`, `USER_HOST`, `CART_HOST`, `SHIPPING_HOST`, `PAYMENT_HOST` | `catalogue`, `user`, `cart`, `shipping`, `payment` | cart, payment, shipping, frontend |
+| `ARTIFACT_BASE`, `ARTIFACT_VERSION` | `https://roboshop-artifacts.s3.amazonaws.com`, `v3` | app services |
+| `SKIP_SERVICE_START` | `0` | `1` installs and builds but starts nothing and loads no data, for baking machine images |
+
+Where things go:
+
+- application code in `/app`, run as the `roboshop` system user
+- service settings in `/etc/roboshop/<service>.env`, readable by root only (passwords live here, not in the unit file)
+- systemd units in `/etc/systemd/system/<service>.service`: check with `systemctl status catalogue` and `journalctl -u catalogue`
+- script logs in `/var/log/roboshop/<script>.log`
+
+Open the ports in the table between servers (security groups or `firewalld`). The MySQL script also creates `root@'%'` so shipping can load its data over the network: keep port 3306 closed to everything except the shipping server.
+
 ## Reuse the helpers
 
 `lib/common.sh` holds the shared functions. Source it in your own scripts:
@@ -46,6 +101,10 @@ Set `LOG_DIR` to log somewhere else: `sudo LOG_DIR=/tmp/roboshop bash install.sh
 | `validate $? "step"` | Logs OK, or logs the error and exits |
 | `is_installed pkg` | True if the RPM package is installed |
 | `die "msg"` | Logs an error and exits |
+| `run "step" cmd…` | Runs a command quietly (output to the log) and validates it |
+| `install_pkgs pkg…` | `dnf install`, skipping packages already present |
+
+`lib/app.sh` adds the RoboShop app helpers: `app_user`, `app_download`, `write_env`, `write_unit`, `start_service`, `enable_module`, `nodejs_app`.
 
 ## Shell scripting examples
 
@@ -57,10 +116,11 @@ CI runs on every push:
 
 - [ShellCheck](https://www.shellcheck.net/) on every script
 - `install.sh` in a Rocky Linux 9 container: dry run changes nothing, a real install works, a second run skips the package, and an unknown package fails
+- every script in `services/`, twice each, in Rocky Linux 9 containers with `SKIP_SERVICE_START=1`: packages install, Node.js dependencies install, shipping builds with Maven, dispatch builds with Go, nginx config passes `nginx -t`. Starting services and loading data need systemd, so test those on a real server
 
-## Roadmap
+## Credits
 
-- Per-service setup scripts for the RoboShop components (MongoDB, Redis, MySQL, RabbitMQ, catalogue, user, cart, shipping, payment, frontend)
+RoboShop is based on [Instana's Robot Shop](https://github.com/instana/robot-shop) sample app. The scripts download its packaged code from the `roboshop-artifacts` S3 bucket.
 
 ## License
 

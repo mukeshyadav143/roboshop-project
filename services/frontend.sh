@@ -33,6 +33,8 @@ location /health {
 }
 CONF
 log "${G}OK:${N} wrote /etc/nginx/default.d/roboshop.conf"
-run "checking nginx config" nginx -t
+# nginx resolves every proxy_pass host when it loads, so an unknown name fails here
+nginx -t >>"$LOG_FILE" 2>&1 || die "nginx config check failed. Every *_HOST must resolve from this server (DNS, /etc/hosts or an IP). Details in $LOG_FILE"
+log "${G}OK:${N} nginx config check"
 start_service nginx
 log "${G}Done.${N} frontend on port 80"

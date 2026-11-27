@@ -1,0 +1,14 @@
+name: E2E
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  deploy-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - name: Deploy every tier and test the shop
+        run: bash tests/e2e.sh

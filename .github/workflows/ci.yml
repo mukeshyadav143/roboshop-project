@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: ShellCheck
-        run: shellcheck -x -P SCRIPTDIR/.. install.sh lib/*.sh services/*.sh shell-scripting/*.sh
+        run: shellcheck -x -P SCRIPTDIR/.. install.sh lib/*.sh services/*.sh tests/*.sh shell-scripting/*.sh
 
   install-test:
     runs-on: ubuntu-latest
